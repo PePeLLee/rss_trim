@@ -6,9 +6,6 @@
     <title>RSS Trim</title>
 </head>
 <body>
-    <h1>Latest 5 Episodes</h1>
-    <div id="rss-feed"></div>
-
     <script>
         // Function to get URL parameters
         function getUrlParameter(name) {
@@ -24,6 +21,36 @@
             return new window.DOMParser().parseFromString(text, "text/xml");
         }
 
+        function createRSSDoc(xml, episodes) {
+            const rss = xml.querySelector('rss');
+            const channel = xml.querySelector('channel');
+
+            // Remove all existing items
+            const items = channel.querySelectorAll('item');
+            items.forEach(item => channel.removeChild(item));
+
+            // Add new items
+            episodes.forEach(episode => {
+                const item = xml.createElement('item');
+
+                const title = xml.createElement('title');
+                title.textContent = episode.title;
+                item.appendChild(title);
+
+                const link = xml.createElement('link');
+                link.textContent = episode.link;
+                item.appendChild(link);
+
+                const description = xml.createElement('description');
+                description.textContent = episode.description;
+                item.appendChild(description);
+
+                channel.appendChild(item);
+            });
+
+            return new XMLSerializer().serializeToString(rss);
+        }
+
         function parseRSS(xml) {
             const items = xml.querySelectorAll("item");
             let episodes = [];
@@ -36,29 +63,17 @@
             return episodes;
         }
 
-        function displayEpisodes(episodes) {
-            const container = document.getElementById("rss-feed");
-            container.innerHTML = "";
-            episodes.forEach(episode => {
-                const episodeDiv = document.createElement("div");
-                episodeDiv.innerHTML = `
-                    <h2><a href="${episode.link}">${episode.title}</a></h2>
-                    <p>${episode.description}</p>
-                `;
-                container.appendChild(episodeDiv);
-            });
-        }
-
         async function loadLatestEpisodes() {
             const rssUrl = getUrlParameter('rssUrl'); // Get RSS feed URL from URL parameters
             if (!rssUrl) {
-                document.getElementById("rss-feed").innerHTML = "No RSS feed URL provided.";
+                document.body.innerHTML = "No RSS feed URL provided.";
                 return;
             }
             const xml = await fetchRSS(rssUrl);
             let episodes = parseRSS(xml);
             episodes = episodes.slice(0, 5); // Trim to the latest 5 episodes
-            displayEpisodes(episodes);
+            const rssDoc = createRSSDoc(xml, episodes);
+            document.body.innerHTML = `<pre>${rssDoc}</pre>`;
         }
 
         loadLatestEpisodes();
